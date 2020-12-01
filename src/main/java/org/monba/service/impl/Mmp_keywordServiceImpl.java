@@ -128,11 +128,11 @@ public class Mmp_keywordServiceImpl implements Mmp_keywordService {
                     JSONObject dataObject = dataJSONArray.getJSONObject(i);
                     String kpi = dataObject.getString("kpi");
 
-                    double value;
+                    long value;
                     if (dataObject.isNull("value")) {
-                        value = 0.0;
+                        value = 0;
                     } else {
-                        value = dataObject.getDouble("value");
+                        value = dataObject.getLong("value");
                     }
 
                     String name = dataObject.getString("name");
@@ -189,61 +189,64 @@ public class Mmp_keywordServiceImpl implements Mmp_keywordService {
                         String row_key = aLong+"_" + time;
                         System.out.println(row_key);
                         put = new Put(Bytes.toBytes(row_key));
+                        //因为currency的值有可能没有。因此判断如果有这个值就加。
+                        if (jsonObject.has("currency")) {
+                            String currency = jsonObject.getString("currency"); //列名为
+                            put.addColumn(Bytes.toBytes("info"), Bytes.toBytes("CURRENCY"), Bytes.toBytes(currency));
+                        }
+                        //逻辑
+                        //mmp_adgroup是在原来的表中多添加几个列名
+                        //其中 data字段下可能有多个json对象（超过30个） 有几个就加几个列
+                        //每一个json对象中 都有三个键值对 kpi name value
+                        //每一个json对象  都只在要添加的那个行中多加入一个列 列名为name的值（依照逻辑有可能会变化）  值为value的值
+                        //判断如果kpi对应的字符串是以"_revenue"结尾的 那么该列名变为name的值+"_revenue"
+                        //判断如果kpi对应的字符串为install 那么该列名变为"actives"
+                        //其他的都按照默认
+                        JSONArray dataJSONArray = jsonObject.getJSONArray("data");
+                        for (int i = 0; i < dataJSONArray.length(); i++) {
+                            JSONObject dataObject = dataJSONArray.getJSONObject(i);
+                            String kpi = dataObject.getString("kpi");
 
+                            double value;
+                            if (dataObject.isNull("value")) {
+                                value = 0.0;
+                            } else {
+                                value = dataObject.getDouble("value");
+                            }
+
+                            String name = dataObject.getString("name");
+                            String[] s = kpi.split("_");
+
+                            if (name.equals("installs")) {
+                                //添加列
+
+                                put.addColumn(Bytes.toBytes("info"), Bytes.toBytes("ACTIVES"), Bytes.toBytes(value));
+
+                            } else if (s.length == 2 && s[1].equals("revenue")) {
+                                String qualifier = name + "_" + s[1];
+                                //添加列
+                                put.addColumn(Bytes.toBytes("info"), Bytes.toBytes(qualifier.toUpperCase()), Bytes.toBytes(value));
+                            } else {
+                                //添加列
+                                put.addColumn(Bytes.toBytes("info"), Bytes.toBytes(name.toUpperCase()), Bytes.toBytes(value));
+                            }
+                        }
+                        //添加列
+                        put.addColumn(Bytes.toBytes("info"), Bytes.toBytes("APPID"), Bytes.toBytes(appid));
+                        put.addColumn(Bytes.toBytes("info"), Bytes.toBytes("SOURCE"), Bytes.toBytes(source));
+                        //TODO
+                        try {
+                            report_adgroup.put(put);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
                     }
                 } catch (SQLException throwables) {
                     throwables.printStackTrace();
                 }
-                //因为currency的值有可能没有。因此判断如果有这个值就加。
-                if (jsonObject.has("currency")) {
-                    String currency = jsonObject.getString("currency"); //列名为
-                    put.addColumn(Bytes.toBytes("info"), Bytes.toBytes("CURRENCY"), Bytes.toBytes(currency));
-                }
-                //逻辑
-                //mmp_adgroup是在原来的表中多添加几个列名
-                //其中 data字段下可能有多个json对象（超过30个） 有几个就加几个列
-                //每一个json对象中 都有三个键值对 kpi name value
-                //每一个json对象  都只在要添加的那个行中多加入一个列 列名为name的值（依照逻辑有可能会变化）  值为value的值
-                //判断如果kpi对应的字符串是以"_revenue"结尾的 那么该列名变为name的值+"_revenue"
-                //判断如果kpi对应的字符串为install 那么该列名变为"actives"
-                //其他的都按照默认
-                JSONArray dataJSONArray = jsonObject.getJSONArray("data");
-                for (int i = 0; i < dataJSONArray.length(); i++) {
-                    JSONObject dataObject = dataJSONArray.getJSONObject(i);
-                    String kpi = dataObject.getString("kpi");
 
-                    double value;
-                    if (dataObject.isNull("value")) {
-                        value = 0.0;
-                    } else {
-                        value = dataObject.getDouble("value");
-                    }
 
-                    String name = dataObject.getString("name");
-                    String[] s = kpi.split("_");
 
-                    if (name.equals("installs")) {
-                        //添加列
-                        put.addColumn(Bytes.toBytes("info"), Bytes.toBytes("ACTIVES"), Bytes.toBytes(value));
-                    } else if (s.length == 2 && s[1].equals("revenue")) {
-                        String qualifier = name + "_" + s[1];
-                        //添加列
-                        put.addColumn(Bytes.toBytes("info"), Bytes.toBytes(qualifier.toUpperCase()), Bytes.toBytes(value));
-                    } else {
-                        //添加列
-                        put.addColumn(Bytes.toBytes("info"), Bytes.toBytes(name.toUpperCase()), Bytes.toBytes(value));
-                    }
-                }
-                //添加列
-                put.addColumn(Bytes.toBytes("info"), Bytes.toBytes("APPID"), Bytes.toBytes(appid));
-                put.addColumn(Bytes.toBytes("info"), Bytes.toBytes("SOURCE"), Bytes.toBytes(source));
-
-                //TODO
-                try {
-                    report_adgroup.put(put);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
 
             }
 

@@ -20,17 +20,17 @@ public class App {
             keywordMeta(applicationContext);
         }else if("negative".equals(key)){  //不用
             negativeMeta(applicationContext);
-        }else if("report_campaign".equals(key)){//
+        }else if("report_campaign".equals(key)){// ok2
             report_campaignMeta(applicationContext);
-        }else if("report_adgroup".equals(key)){//
+        }else if("report_adgroup".equals(key)){//ok2
             report_adgroupMeta(applicationContext);
-        }else if ("report_keyword".equals(key)){//最后
+        }else if ("report_keyword".equals(key)){//最后 ok2
             report_keywordMeta(applicationContext);
-        }else if("report_searchterm".equals(key)){//最后  8
+        }else if("report_searchterm".equals(key)){//最后  ok
             report_searchtermMeta(applicationContext);
-        }else if ("mmp_campaign".equals(key)){
+        }else if ("mmp_campaign".equals(key)){ //0k2
             mmp_campaignMeta(applicationContext);
-        }else if("mmp_adgroup".equals(key)){
+        }else if("mmp_adgroup".equals(key)){//ok2
             mmp_adgroupMeta(applicationContext);
         }else if("mmp_keyword".equals(key)){
             mmp_keywordMeta(applicationContext);
