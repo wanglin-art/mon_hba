@@ -121,7 +121,7 @@ public class Mmp_adgroupServiceImpl implements Mmp_adgroupService {
             //每一个json对象中 都有三个键值对 kpi name value
             //每一个json对象  都只在要添加的那个行中多加入一个列 列名为name的值（依照逻辑有可能会变化）  值为value的值
             //判断如果kpi对应的字符串是以"_revenue"结尾的 那么该列名变为name的值+"_revenue"
-            //判断如果kpi对应的字符串为install 那么该列名变为"actives"
+            //判断如果kpi对应的字符串为installs 那么该列名变为"actives"
             //其他的都按照默认
             JSONArray dataJSONArray = jsonObject.getJSONArray("data");
             for (int i = 0; i < dataJSONArray.length(); i++) {
@@ -140,7 +140,7 @@ public class Mmp_adgroupServiceImpl implements Mmp_adgroupService {
 
                 if (name.equals("installs")) {
                     //添加列
-                    put.addColumn(Bytes.toBytes("info"), Bytes.toBytes("INSTALLS"), Bytes.toBytes(value));
+                    put.addColumn(Bytes.toBytes("info"), Bytes.toBytes("ACTIVES"), Bytes.toBytes(value));
                 } else if (s.length == 2 && s[1].equals("revenue")) {
                     String qualifier = name + "_" + s[1];
                     //添加列

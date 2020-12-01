@@ -27,6 +27,7 @@ import java.util.*;
 @Service("mmp_keywordService")
 public class Mmp_keywordServiceImpl implements Mmp_keywordService {
     int count = 0;
+    int phoenixSelect = 0;
     @Resource
     private MongoTemplate mongoTemplate;
 
@@ -86,14 +87,13 @@ public class Mmp_keywordServiceImpl implements Mmp_keywordService {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        //在这里获取phoenix的连接
+        //获取phoenix的链接
         java.sql.Connection phoenixConnection=null;
         try {
-            phoenixConnection = PhoenixUtil.getConnection();
+            phoenixConnection= PhoenixUtil.getConnection();
         } catch (SQLException throwables) {
             throwables.printStackTrace();
         }
-
 
 
         //-----------------------解析---------------------------------
@@ -110,8 +110,59 @@ public class Mmp_keywordServiceImpl implements Mmp_keywordService {
                 String time = simpleDateFormat.format(ts * 1000L);
                 String row_key = kw_id + "_" + time;
                 put = new Put(Bytes.toBytes(row_key));
+                //因为currency的值有可能没有。因此判断如果有这个值就加。
+                if (jsonObject.has("currency")) {
+                    String currency = jsonObject.getString("currency"); //列名为
+                    put.addColumn(Bytes.toBytes("info"), Bytes.toBytes("CURRENCY"), Bytes.toBytes(currency));
+                }
+                //逻辑
+                //mmp_adgroup是在原来的表中多添加几个列名
+                //其中 data字段下可能有多个json对象（超过30个） 有几个就加几个列
+                //每一个json对象中 都有三个键值对 kpi name value
+                //每一个json对象  都只在要添加的那个行中多加入一个列 列名为name的值（依照逻辑有可能会变化）  值为value的值
+                //判断如果kpi对应的字符串是以"_revenue"结尾的 那么该列名变为name的值+"_revenue"
+                //判断如果kpi对应的字符串为install 那么该列名变为"actives"
+                //其他的都按照默认
+                JSONArray dataJSONArray = jsonObject.getJSONArray("data");
+                for (int i = 0; i < dataJSONArray.length(); i++) {
+                    JSONObject dataObject = dataJSONArray.getJSONObject(i);
+                    String kpi = dataObject.getString("kpi");
 
+                    double value;
+                    if (dataObject.isNull("value")) {
+                        value = 0.0;
+                    } else {
+                        value = dataObject.getDouble("value");
+                    }
+
+                    String name = dataObject.getString("name");
+                    String[] s = kpi.split("_");
+
+                    if (name.equals("installs")) {
+                        //添加列
+                        put.addColumn(Bytes.toBytes("info"), Bytes.toBytes("ACTIVES"), Bytes.toBytes(value));
+                    } else if (s.length == 2 && s[1].equals("revenue")) {
+                        String qualifier = name + "_" + s[1];
+                        //添加列
+                        put.addColumn(Bytes.toBytes("info"), Bytes.toBytes(qualifier.toUpperCase()), Bytes.toBytes(value));
+                    } else {
+                        //添加列
+                        put.addColumn(Bytes.toBytes("info"), Bytes.toBytes(name.toUpperCase()), Bytes.toBytes(value));
+                    }
+                }
+                //添加列
+                put.addColumn(Bytes.toBytes("info"), Bytes.toBytes("APPID"), Bytes.toBytes(appid));
+                put.addColumn(Bytes.toBytes("info"), Bytes.toBytes("SOURCE"), Bytes.toBytes(source));
+
+                //TODO
+                try {
+                    report_adgroup.put(put);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }else if (jsonObject.isNull("kw_id") && source.equals("appsflyer")){//就去phoenix中的meta_keyword表中查询
+                phoenixSelect++;
+                System.out.println("到Phoenix中查询了"+phoenixSelect);
                 //如果为空那么kw_id为null 则查出ad_id和kw 然后将这两个条件拿到phoenix中查询得到rowkey
                 SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd");
                 String time = simpleDateFormat.format(ts * 1000L);
@@ -123,12 +174,14 @@ public class Mmp_keywordServiceImpl implements Mmp_keywordService {
                 //  但是查询条件的值不用
 //                String s = "select kw_id from meta_keyword where ad_id = %d and kw = %d";
 //                String sql = String.format(s, ad_id, kw);
-                String sql = "select kw_id from meta_keyword where ad_id = "+ad_id+" and kw = "+kw;
+//                String sql = "select kw_id from meta_keyword where ad_id = "+ad_id+" and text = " +"\'kw+\'";
+                String sql = "select kw_id from meta_keyword where ad_id = "+ad_id+" and text = " +"\'"+kw+"\'";
                 //拿到的是kw_id的集合 因此遍历然后将数据写入
                     //111
-                PreparedStatement preparedStatement = null;
+                //在这里获取phoenix的连接
+                PreparedStatement preparedStatement;
                 try {
-                    preparedStatement = phoenixConnection.prepareStatement(sql);
+                    preparedStatement= phoenixConnection.prepareStatement(sql);
                     ResultSet resultSet = preparedStatement.executeQuery();
 
                     while (resultSet.next()) {
@@ -141,59 +194,60 @@ public class Mmp_keywordServiceImpl implements Mmp_keywordService {
                 } catch (SQLException throwables) {
                     throwables.printStackTrace();
                 }
+                //因为currency的值有可能没有。因此判断如果有这个值就加。
+                if (jsonObject.has("currency")) {
+                    String currency = jsonObject.getString("currency"); //列名为
+                    put.addColumn(Bytes.toBytes("info"), Bytes.toBytes("CURRENCY"), Bytes.toBytes(currency));
+                }
+                //逻辑
+                //mmp_adgroup是在原来的表中多添加几个列名
+                //其中 data字段下可能有多个json对象（超过30个） 有几个就加几个列
+                //每一个json对象中 都有三个键值对 kpi name value
+                //每一个json对象  都只在要添加的那个行中多加入一个列 列名为name的值（依照逻辑有可能会变化）  值为value的值
+                //判断如果kpi对应的字符串是以"_revenue"结尾的 那么该列名变为name的值+"_revenue"
+                //判断如果kpi对应的字符串为install 那么该列名变为"actives"
+                //其他的都按照默认
+                JSONArray dataJSONArray = jsonObject.getJSONArray("data");
+                for (int i = 0; i < dataJSONArray.length(); i++) {
+                    JSONObject dataObject = dataJSONArray.getJSONObject(i);
+                    String kpi = dataObject.getString("kpi");
 
-            }
+                    double value;
+                    if (dataObject.isNull("value")) {
+                        value = 0.0;
+                    } else {
+                        value = dataObject.getDouble("value");
+                    }
 
-            //因为currency的值有可能没有。因此判断如果有这个值就加。
-            if (jsonObject.has("currency")) {
-                String currency = jsonObject.getString("currency"); //列名为
-                put.addColumn(Bytes.toBytes("info"), Bytes.toBytes("CURRENCY"), Bytes.toBytes(currency));
-            }
-            //逻辑
-            //mmp_adgroup是在原来的表中多添加几个列名
-            //其中 data字段下可能有多个json对象（超过30个） 有几个就加几个列
-            //每一个json对象中 都有三个键值对 kpi name value
-            //每一个json对象  都只在要添加的那个行中多加入一个列 列名为name的值（依照逻辑有可能会变化）  值为value的值
-            //判断如果kpi对应的字符串是以"_revenue"结尾的 那么该列名变为name的值+"_revenue"
-            //判断如果kpi对应的字符串为install 那么该列名变为"actives"
-            //其他的都按照默认
-            JSONArray dataJSONArray = jsonObject.getJSONArray("data");
-            for (int i = 0; i < dataJSONArray.length(); i++) {
-                JSONObject dataObject = dataJSONArray.getJSONObject(i);
-                String kpi = dataObject.getString("kpi");
+                    String name = dataObject.getString("name");
+                    String[] s = kpi.split("_");
 
-                double value;
-                if (dataObject.isNull("value")) {
-                    value = 0.0;
-                } else {
-                    value = dataObject.getDouble("value");
+                    if (name.equals("installs")) {
+                        //添加列
+                        put.addColumn(Bytes.toBytes("info"), Bytes.toBytes("ACTIVES"), Bytes.toBytes(value));
+                    } else if (s.length == 2 && s[1].equals("revenue")) {
+                        String qualifier = name + "_" + s[1];
+                        //添加列
+                        put.addColumn(Bytes.toBytes("info"), Bytes.toBytes(qualifier.toUpperCase()), Bytes.toBytes(value));
+                    } else {
+                        //添加列
+                        put.addColumn(Bytes.toBytes("info"), Bytes.toBytes(name.toUpperCase()), Bytes.toBytes(value));
+                    }
+                }
+                //添加列
+                put.addColumn(Bytes.toBytes("info"), Bytes.toBytes("APPID"), Bytes.toBytes(appid));
+                put.addColumn(Bytes.toBytes("info"), Bytes.toBytes("SOURCE"), Bytes.toBytes(source));
+
+                //TODO
+                try {
+                    report_adgroup.put(put);
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
 
-                String name = dataObject.getString("name");
-                String[] s = kpi.split("_");
-
-                if (name.equals("installs")) {
-                    //添加列
-                    put.addColumn(Bytes.toBytes("info"), Bytes.toBytes("INSTALLS"), Bytes.toBytes(value));
-                } else if (s.length == 2 && s[1].equals("revenue")) {
-                    String qualifier = name + "_" + s[1];
-                    //添加列
-                    put.addColumn(Bytes.toBytes("info"), Bytes.toBytes(qualifier.toUpperCase()), Bytes.toBytes(value));
-                } else {
-                    //添加列
-                    put.addColumn(Bytes.toBytes("info"), Bytes.toBytes(name.toUpperCase()), Bytes.toBytes(value));
-                }
             }
-            //添加列
-            put.addColumn(Bytes.toBytes("info"), Bytes.toBytes("APPID"), Bytes.toBytes(appid));
-            put.addColumn(Bytes.toBytes("info"), Bytes.toBytes("SOURCE"), Bytes.toBytes(source));
 
-            //TODO
-            try {
-                report_adgroup.put(put);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+
         }
         HbaseUtil.close(hbaseConnection);
         PhoenixUtil.close(phoenixConnection);

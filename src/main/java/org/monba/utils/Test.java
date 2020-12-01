@@ -69,7 +69,7 @@ public class Test {
         long ad_id =12123;
         String kw ="fsafs";
 
-        String sql = "select kw_id from meta_keyword where ad_id = "+ad_id+" and kw = "+kw;
+        String sql = "select kw_id from meta_keyword where ad_id = "+ad_id+" and text = " +"\'"+kw+"\'";
         System.out.println(sql);
     }
 }

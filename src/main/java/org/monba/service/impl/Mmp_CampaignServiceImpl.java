@@ -136,7 +136,7 @@ public class Mmp_CampaignServiceImpl implements Mmp_CampaignService {
 
                 if (name.equals("installs")) {
                     //添加列
-                    put.addColumn(Bytes.toBytes("info"), Bytes.toBytes("INSTALLS"), Bytes.toBytes(value));
+                    put.addColumn(Bytes.toBytes("info"), Bytes.toBytes("ACTIVES"), Bytes.toBytes(value));
                 } else if (s.length == 2 && s[1].equals("_revenue")) {
                     String qualifier = name + "_" + s[1];
                     //添加列
