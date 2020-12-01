@@ -244,13 +244,7 @@ public class Mmp_keywordServiceImpl implements Mmp_keywordService {
                 } catch (SQLException throwables) {
                     throwables.printStackTrace();
                 }
-
-
-
-
             }
-
-
         }
         HbaseUtil.close(hbaseConnection);
         PhoenixUtil.close(phoenixConnection);
