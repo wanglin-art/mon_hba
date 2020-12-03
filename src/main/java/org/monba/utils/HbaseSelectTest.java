@@ -2,12 +2,14 @@ package org.monba.utils;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.*;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import java.io.IOException;
+import java.util.List;
 
 public class HbaseSelectTest {
 
@@ -34,12 +36,23 @@ public class HbaseSelectTest {
         //5.查询数据
         Result result = table.get(get);
 
-        //6.解析result
+//        byte[] value1 = result.getValue(Bytes.toBytes("info"), Bytes.toBytes("id"));
+//        byte[] value2 = result.getValue(Bytes.toBytes("info"), Bytes.toBytes("modificationTime"));
+//        byte[] value3 = result.getValue(Bytes.toBytes("info"), Bytes.toBytes("cert"));
+//        for (int i = 0; i < value1.length; i++) {
+//            System.out.println(value1[i]);
+//        }
+
         for (Cell cell : result.rawCells()) {
-            System.out.println("CF:" + Bytes.toString(cell.getFamilyArray()) +
-                    ",CN:" + Bytes.toString(cell.getQualifierArray()) +
-                    ",Value:" + Bytes.toString(cell.getValueArray()));
+            System.out.write(CellUtil.cloneQualifier(cell));
+            System.out.print(" ");
+            System.out.println();
         }
+
+//        6.解析result
+        List<Cell> cells = result.listCells();
+        System.out.println(Bytes.toLong(CellUtil.cloneValue(cells.get(23))));
+
         //7.关闭连接
         table.close();
         connection.close();

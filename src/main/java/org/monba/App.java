@@ -24,7 +24,7 @@ public class App {
             report_campaignMeta(applicationContext);
         }else if("report_adgroup".equals(key)){//ok2
             report_adgroupMeta(applicationContext);
-        }else if ("report_keyword".equals(key)){//最后 ok2
+        }else if ("report_keyword".equals(key)){//最后 ok2 ok3
             report_keywordMeta(applicationContext);
         }else if("report_searchterm".equals(key)){//最后  ok
             report_searchtermMeta(applicationContext);
